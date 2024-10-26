@@ -1,21 +1,22 @@
-#include <ESP8266WiFi.h>        // * Include ESP8266 for wifi connection
-#include "mqtt_secrets.h"       // * Include credential information for local wifi connection and MQTT
-#include <DHT.h>                // * Include library for DHT sensor for detecting temperature and humidity
-#include <ESP8266HTTPClient.h>  // * Include HTTPClient for making HTTP requests
+#include <ESP8266WiFi.h>        // * Wifi connection for ESP8266 board
+#include "mqtt_secrets.h"       // * Credential for MQTT and Wifi connection
+#include <DHT.h>                // * Library for DHT11
+#include <ESP8266HTTPClient.h>  // * HTTP Client library for ESP8266 board
 
-String apikey = CHANNEL_WRITE_API_KEY;                   // * API write Key provided by MQTT service
+const String apiKey = CHANNEL_WRITE_API_KEY;             // * API write Key provided by MQTT service
 const char* server = "http://api.thingspeak.com/update"; // * ThingSpeak update URL
+const char* emailServer = "http://localhost:3000/api/v1/emails/notify";
 
-#define DHTPIN D2         // * D2 pin of ESP8266 is connected with DHT11 sensor data wire
-#define DHTTYPE DHT11     // * Sensor type is DHT11
-#define Relay D0          // * D7 pin of ESP8266 is connected with relay control
+#define DHTPIN D2         // * DHT11 Data pin
+#define DHTTYPE DHT11     // * Sensor type
+#define Relay D0          // * Relay control pin
 DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT sensor type
 
 #define THRESHOLD_TEMP 29
 #define RELAY_DURATION_IN_SEC 1
 
 void setup() {
-  Serial.begin(115200); // * Initialize Serial port with 115200 bit/s
+  Serial.begin(115200); // * Initialize Serial with 115200 bit/s
   
   WiFi.begin(SECRET_WIFI_NAME, SECRET_WIFI_PASSWORD); 
   while (WiFi.status() != WL_CONNECTED) {
@@ -25,7 +26,7 @@ void setup() {
 
   Serial.println("Connected to WiFi");
   
-  pinMode(Relay, OUTPUT); // * Configuring Relay as output (D7 pin of ESP8266)
+  pinMode(Relay, OUTPUT); // * Configuring Relay as output of ESP8266 board
   dht.begin();            // * Begin running DHT sensor
 }
 
@@ -42,11 +43,10 @@ void loop() {
     WiFiClient wifiClient;
     HTTPClient http;
     
-    // * Sample request url: http://api.thingspeak.com/update?api_key=UULXX7OEH50YBQ1Y&field1=12&field2=12
-    String url = String(server) + "?api_key=" + apikey + "&field1=" + String(t) + "&field2=" + String(h);
+    // * Sample POST request url
+    String url = String(server) + "?api_key=" + apiKey + "&field1=" + String(t) + "&field2=" + String(h);
     
-    http.begin(wifiClient, url); // * Initialize the HTTP request (use the WiFiClient object)
-    
+    http.begin(wifiClient, url); // * Initialize the HTTP request
     int httpCode = http.POST(""); // * Send HTTP POST request
 
     if (httpCode > 0) {
@@ -58,6 +58,24 @@ void loop() {
     }
 
     http.end();
+
+    // * Sample GET request with query params
+    HTTPClient getHttp;
+    String getUrl = String(emailServer) + "?to=" + String(NOTIFICATION_RECEIVER) + "&subject=Humid and Temperature Alert notification&content=Temperature = " + String(t) + " - Humid = " + String(h);
+
+    getHttp.begin(wifiClient, getUrl);
+    int getHttpCode = getHttp.GET();
+
+    if (getHttpCode > 0) {
+      String getPayload = getHttp.getString();
+      Serial.println("GET request sent successfully.");
+      Serial.println("Server response code: " + String(getHttpCode));
+      Serial.println("Response payload: " + getPayload);
+    } else {
+      Serial.println("Failed to send GET request. Error: " + String(getHttp.errorToString(getHttpCode).c_str()));
+    }
+
+    getHttp.end();
 
     // * Control the relay based on temperature
     if (t >= THRESHOLD_TEMP) {

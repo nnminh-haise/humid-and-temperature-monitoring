@@ -5,7 +5,7 @@
 
 const String apiKey = CHANNEL_WRITE_API_KEY;             // * API write Key provided by MQTT service
 const char* server = "http://api.thingspeak.com/update"; // * ThingSpeak update URL
-const char* emailServer = "http://localhost:3000/api/v1/emails/notify";
+const char* emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type

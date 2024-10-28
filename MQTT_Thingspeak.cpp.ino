@@ -4,9 +4,9 @@
 #include <ESP8266HTTPClient.h>  // * HTTP Client library for ESP8266 board
 #include <WiFiClientSecure.h>   // * Secure client for HTTPS requests
 
-const String apiKey = CHANNEL_WRITE_API_KEY;             // * API write Key provided by MQTT service
-const char* server = "http://api.thingspeak.com/update"; // * ThingSpeak update URL
-const char* emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
+const String apiKey = CHANNEL_WRITE_API_KEY;
+const String thingSpeakServer = "http://api.thingspeak.com/update";
+const String emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
@@ -28,83 +28,76 @@ void setup() {
   Serial.println("Connected to WiFi");
   
   pinMode(Relay, OUTPUT); // * Configuring Relay as output of ESP8266 board
-  dht.begin();            // * Begin running DHT sensor
+  dht.begin();
 }
 
 void loop() {
   float h = dht.readHumidity();
-  float t = dht.readTemperature(); // * Unit C
+  float t = dht.readTemperature();
 
   if (isnan(h) || isnan(t)) {
     Serial.println("Cannot read data from DHT sensor!");
     return;
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
-    WiFiClient wifiClient;
-    HTTPClient http;
-    
-    // * Sample POST request url
-    String url = String(server) + "?api_key=" + apiKey + "&field1=" + String(t) + "&field2=" + String(h);
-    
-    http.begin(wifiClient, url); // * Initialize the HTTP request
-    int httpCode = http.POST(""); // * Send HTTP POST request
-
-    if (httpCode > 0) {
-      String payload = http.getString();
-      Serial.println("POST request sent successfully.");
-      Serial.println("Server response code: " + String(httpCode));
-    } else {
-      Serial.println("Failed to send POST request. Error: " + String(http.errorToString(httpCode).c_str()));
-    }
-
-    http.end();
-
-    // * Sample HTTPS GET request with query params
-    WiFiClientSecure httpsClient; // Secure client for HTTPS
-    httpsClient.setInsecure();    // Use this line for testing only to allow insecure connections without checking certificates
-    
-    HTTPClient getHttp;
-
-    // Compose the URL with query parameters
-    String getUrl = String(emailServer) + "?to=" + String(NOTIFICATION_RECEIVER) + "&subject=Humid+and+Temperature+Alert&content=Temperature+=+" + String(t) + "+-+Humid+=+" + String(h);
-    getHttp.begin(httpsClient, getUrl); // Use HTTPS client for the GET request
-    
-    Serial.println("Sending HTTPS GET request to: " + getUrl);
-    int getHttpCode = getHttp.GET();
-
-    if (getHttpCode > 0) {
-      String getPayload = getHttp.getString();
-      Serial.println("GET request sent successfully.");
-      Serial.println("Server response code: " + String(getHttpCode));
-      Serial.println("Response payload: " + getPayload);
-    } else {
-      Serial.println("Failed to send HTTPS GET request. Error: " + String(getHttp.errorToString(getHttpCode).c_str()));
-    }
-
-    getHttp.end();
-
-    // * Control the relay based on temperature
-    if (t >= THRESHOLD_TEMP) {
-      Serial.println("Turning on Relay");
-      digitalWrite(Relay, LOW);  // * Turn on relay
-      delay(RELAY_DURATION_IN_SEC * 1000);
-      digitalWrite(Relay, HIGH); // * Turn off relay
-    } else {
-      digitalWrite(Relay, HIGH); // * Keep relay off if temperature is below threshold
-    }
-  } else {
-    Serial.println("WiFi disconnected. Trying to reconnect...");
-  }
-
-  // * Show result on Serial display
   Serial.print("Humid: ");
   Serial.print(h);
   Serial.print(" %\t");
   Serial.print("Temperature: ");
   Serial.print(t);
   Serial.println(" °C");
-  Serial.println("Waiting 10 seconds to read data from sensor and send next request ...");
-  
-  delay(10000); // * Delay 10 seconds (10,000 milliseconds) for the next request & next sensor read
+
+  delay(2000);
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi disconnected. Trying to reconnect...");
+    return;
+  }
+
+  if (t >= THRESHOLD_TEMP) {
+    Serial.println("Turning on Relay");
+    digitalWrite(Relay, LOW);
+    delay(RELAY_DURATION_IN_SEC * 1000);
+    digitalWrite(Relay, HIGH);
+    Serial.println("Turned off Relay");
+  } else {
+    digitalWrite(Relay, HIGH);
+  }
+
+  // * Sending HTTP POST Request to Thing Speak server to send data of humid and temperature.
+  WiFiClient wifiClient;
+  HTTPClient http;
+  const String thingSpeakHttpPostRequest = thingSpeakServer + "?api_key=" + apiKey + "&field1=" + String(t) + "&field2=" + String(h);
+  http.begin(wifiClient, thingSpeakHttpPostRequest);
+  int thingSpeakHttpCode = http.POST("");
+  if (thingSpeakHttpCode > 0) {
+    String payload = http.getString();
+    Serial.println("ThingSpeak Server request sent successfully.");
+    Serial.println("Server response code: " + String(thingSpeakHttpCode));
+  } else {
+    Serial.println("Failed to send HTTP POST request. Error: " + String(http.errorToString(thingSpeakHttpCode).c_str()));
+  }
+  http.end();
+
+  // * Sending HTTPS GET Request to Mailing server to request a mailing to receiver.
+  WiFiClientSecure httpsClient;
+  httpsClient.setInsecure();
+  HTTPClient httpClientForSendingEmail;
+  const String emailSubject = "Humid+and+Temperature+Alert";
+  const String emailContent = "Temperature+=+" + String(t) + "+|+Humid+=+" + String(h);
+  String mailingHttpsServerGetRequest = String(emailServer) + "?to=" + NOTIFICATION_RECEIVER + "&subject=" + emailSubject + "&content=" + emailContent;
+  httpClientForSendingEmail.begin(httpsClient, mailingHttpsServerGetRequest);
+  int mailingServiceHttpsCode = getHttp.GET();
+  if (mailingServiceHttpsCode > 0) {
+    String getPayload = httpClientForSendingEmail.getString();
+    Serial.println("Mailing Server request sent successfully.");
+    Serial.println("Server response code: " + String(mailingServiceHttpsCode));
+    Serial.println("Response payload: " + getPayload);
+  } else {
+    Serial.println("Failed to send HTTPS GET request. Error: " + String(getHttp.errorToString(mailingServiceHttpsCode).c_str()));
+  }
+  httpClientForSendingEmail.end();
+
+  Serial.println("Waiting 8 seconds to send next request ...");
+  delay(8000);
 }

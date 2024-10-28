@@ -87,14 +87,14 @@ void loop() {
   const String emailContent = "Temperature+=+" + String(t) + "+|+Humid+=+" + String(h);
   String mailingHttpsServerGetRequest = String(emailServer) + "?to=" + NOTIFICATION_RECEIVER + "&subject=" + emailSubject + "&content=" + emailContent;
   httpClientForSendingEmail.begin(httpsClient, mailingHttpsServerGetRequest);
-  int mailingServiceHttpsCode = getHttp.GET();
+  int mailingServiceHttpsCode = httpClientForSendingEmail.GET();
   if (mailingServiceHttpsCode > 0) {
     String getPayload = httpClientForSendingEmail.getString();
     Serial.println("Mailing Server request sent successfully.");
     Serial.println("Server response code: " + String(mailingServiceHttpsCode));
     Serial.println("Response payload: " + getPayload);
   } else {
-    Serial.println("Failed to send HTTPS GET request. Error: " + String(getHttp.errorToString(mailingServiceHttpsCode).c_str()));
+    Serial.println("Failed to send HTTPS GET request. Error: " + String(httpClientForSendingEmail.errorToString(mailingServiceHttpsCode).c_str()));
   }
   httpClientForSendingEmail.end();
 

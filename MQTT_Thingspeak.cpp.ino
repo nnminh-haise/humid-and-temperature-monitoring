@@ -7,7 +7,8 @@
 const String apiKey = CHANNEL_WRITE_API_KEY;
 const String thingSpeakServer = "http://api.thingspeak.com/update";
 const String emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
-const String dataServerUrl = "https://example.com/data"; // Replace with your actual data server URL
+const String thingSpeakServerReadTemperatureThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/3.json?api_key=O0QM4ZXS290A7SUM&results=1";
+const String thingSpeakServerReadHumidThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/4.json?api_key=O0QM4ZXS290A7SUM&results=1";
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
@@ -20,19 +21,18 @@ DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT 
 struct Data {
   float temperature;
   float humid;
-}
+};
 
 void setup() {
-  Serial.begin(115200); // * Initialize Serial with 115200 bit/s
+  Serial.begin(115200);
   
   WiFi.begin(SECRET_WIFI_NAME, SECRET_WIFI_PASSWORD); 
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi ...");
   }
-
   Serial.println("Connected to WiFi");
-  
+
   pinMode(Relay, OUTPUT); // * Configuring Relay as output of ESP8266 board
   dht.begin();
 }
@@ -42,7 +42,7 @@ void getDataFromServer() {
   httpsClient.setInsecure();
   HTTPClient httpClient;
   
-  httpClient.begin(httpsClient, dataServerUrl);
+  httpClient.begin(httpsClient, thingSpeakServerReadTemperatureThresholdUrl);
   int httpCode = httpClient.GET();
 
   if (httpCode > 0) {

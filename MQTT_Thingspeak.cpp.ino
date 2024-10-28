@@ -2,6 +2,7 @@
 #include "mqtt_secrets.h"       // * Credential for MQTT and Wifi connection
 #include <DHT.h>                // * Library for DHT11
 #include <ESP8266HTTPClient.h>  // * HTTP Client library for ESP8266 board
+#include <WiFiClientSecure.h>   // * Secure client for HTTPS requests
 
 const String apiKey = CHANNEL_WRITE_API_KEY;             // * API write Key provided by MQTT service
 const char* server = "http://api.thingspeak.com/update"; // * ThingSpeak update URL
@@ -59,12 +60,17 @@ void loop() {
 
     http.end();
 
-    // * Sample GET request with query params
+    // * Sample HTTPS GET request with query params
+    WiFiClientSecure httpsClient; // Secure client for HTTPS
+    httpsClient.setInsecure();    // Use this line for testing only to allow insecure connections without checking certificates
+    
     HTTPClient getHttp;
 
-    getHttp.begin(wifiClient, getUrl);
+    // Compose the URL with query parameters
     String getUrl = String(emailServer) + "?to=" + String(NOTIFICATION_RECEIVER) + "&subject=Humid+and+Temperature+Alert&content=Temperature+=+" + String(t) + "+-+Humid+=+" + String(h);
-    Serial.println("url:", getUrl);
+    getHttp.begin(httpsClient, getUrl); // Use HTTPS client for the GET request
+    
+    Serial.println("Sending HTTPS GET request to: " + getUrl);
     int getHttpCode = getHttp.GET();
 
     if (getHttpCode > 0) {
@@ -73,7 +79,7 @@ void loop() {
       Serial.println("Server response code: " + String(getHttpCode));
       Serial.println("Response payload: " + getPayload);
     } else {
-      Serial.println("Failed to send GET request. Error: " + String(getHttp.errorToString(getHttpCode).c_str()));
+      Serial.println("Failed to send HTTPS GET request. Error: " + String(getHttp.errorToString(getHttpCode).c_str()));
     }
 
     getHttp.end();

@@ -61,9 +61,10 @@ void loop() {
 
     // * Sample GET request with query params
     HTTPClient getHttp;
-    String getUrl = String(emailServer) + "?to=" + String(NOTIFICATION_RECEIVER) + "&subject=Humid and Temperature Alert notification&content=Temperature = " + String(t) + " - Humid = " + String(h);
 
     getHttp.begin(wifiClient, getUrl);
+    String getUrl = String(emailServer) + "?to=" + String(NOTIFICATION_RECEIVER) + "&subject=Humid+and+Temperature+Alert&content=Temperature+=+" + String(t) + "+-+Humid+=+" + String(h);
+    Serial.println("url:", getUrl);
     int getHttpCode = getHttp.GET();
 
     if (getHttpCode > 0) {

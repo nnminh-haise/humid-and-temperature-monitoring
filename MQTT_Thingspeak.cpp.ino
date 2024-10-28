@@ -3,6 +3,7 @@
 #include <DHT.h>                // * Library for DHT11
 #include <ESP8266HTTPClient.h>  // * HTTP Client library for ESP8266 board
 #include <WiFiClientSecure.h>   // * Secure client for HTTPS requests
+#include <ArduinoJson.h>
 
 const String apiKey = CHANNEL_WRITE_API_KEY;
 const String thingSpeakServer = "http://api.thingspeak.com/update";
@@ -49,6 +50,36 @@ void getDataFromServer() {
     String payload = httpClient.getString();
     Serial.println("Data received from server:");
     Serial.println(payload);
+
+    // Parse the JSON payload
+    const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(1) + 340;
+    DynamicJsonDocument doc(capacity);
+    DeserializationError error = deserializeJson(doc, payload);
+
+    if (error) {
+      Serial.print("Failed to parse JSON: ");
+      Serial.println(error.c_str());
+      return;
+    }
+
+    // Access `field3` and `field4` in the `feeds` array
+    float tempThreshold = doc["feeds"][0]["field3"].isNull() ? -1 : doc["feeds"][0]["field3"].as<float>();
+    float humidThreshold = doc["feeds"][0]["field4"].isNull() ? -1 : doc["feeds"][0]["field4"].as<float>();
+
+    if (tempThreshold != -1) {
+      Serial.print("Temperature Threshold (field3): ");
+      Serial.println(tempThreshold);
+    } else {
+      Serial.println("Temperature threshold data (field3) is null.");
+    }
+
+    if (humidThreshold != -1) {
+      Serial.print("Humidity Threshold (field4): ");
+      Serial.println(humidThreshold);
+    } else {
+      Serial.println("Humidity threshold data (field4) is null.");
+    }
+    
   } else {
     Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
   }

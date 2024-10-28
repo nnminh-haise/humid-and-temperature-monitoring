@@ -10,6 +10,7 @@ const String thingSpeakServer = "http://api.thingspeak.com/update";
 const String emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
 const String thingSpeakServerReadTemperatureThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/3.json?api_key=O0QM4ZXS290A7SUM&results=1";
 const String thingSpeakServerReadHumidThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/4.json?api_key=O0QM4ZXS290A7SUM&results=1";
+const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/2711831/feeds.json?api_key=O0QM4ZXS290A7SUM&results=1";
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
@@ -43,45 +44,43 @@ void getDataFromServer() {
   httpsClient.setInsecure();
   HTTPClient httpClient;
   
-  httpClient.begin(httpsClient, thingSpeakServerReadTemperatureThresholdUrl);
+  httpClient.begin(httpsClient, thingSpeakReadFeedUrl);
   int httpCode = httpClient.GET();
 
-  if (httpCode > 0) {
-    String payload = httpClient.getString();
-    Serial.println("Data received from server:");
-    Serial.println(payload);
-
-    // Parse the JSON payload
-    const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(1) + 340;
-    DynamicJsonDocument doc(capacity);
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (error) {
-      Serial.print("Failed to parse JSON: ");
-      Serial.println(error.c_str());
-      return;
-    }
-
-    // Access `field3` and `field4` in the `feeds` array
-    float tempThreshold = doc["feeds"][0]["field3"].isNull() ? -1 : doc["feeds"][0]["field3"].as<float>();
-    float humidThreshold = doc["feeds"][0]["field4"].isNull() ? -1 : doc["feeds"][0]["field4"].as<float>();
-
-    if (tempThreshold != -1) {
-      Serial.print("Temperature Threshold (field3): ");
-      Serial.println(tempThreshold);
-    } else {
-      Serial.println("Temperature threshold data (field3) is null.");
-    }
-
-    if (humidThreshold != -1) {
-      Serial.print("Humidity Threshold (field4): ");
-      Serial.println(humidThreshold);
-    } else {
-      Serial.println("Humidity threshold data (field4) is null.");
-    }
-    
-  } else {
+  if (httpCode <= 0) {
     Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
+    httpClient.end();
+  }
+
+  String payload = httpClient.getString();
+  Serial.println("Data received from server:");
+  Serial.println(payload);
+
+  const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(1) + 340;
+  DynamicJsonDocument doc(capacity);
+  DeserializationError error = deserializeJson(doc, payload);
+
+  if (error) {
+    Serial.print("Failed to parse JSON: ");
+    Serial.println(error.c_str());
+    return;
+  }
+
+  float tempThreshold = doc["feeds"][0]["field3"].isNull() ? -1 : doc["feeds"][0]["field3"].as<float>();
+  float humidThreshold = doc["feeds"][0]["field4"].isNull() ? -1 : doc["feeds"][0]["field4"].as<float>();
+  Serial.println("temp threshold:" + tempThreshold);
+  Serial.println("humid threshold:" + humidThreshold);
+
+  if (tempThreshold != -1) {
+    Serial.println("Temperature Threshold (field3): " + tempThreshold);
+  } else {
+    Serial.println("Temperature threshold data (field3) is null.");
+  }
+
+  if (humidThreshold != -1) {
+    Serial.println("Humidity Threshold (field4): " + humidThreshold);
+  } else {
+    Serial.println("Humidity threshold data (field4) is null.");
   }
   
   httpClient.end();

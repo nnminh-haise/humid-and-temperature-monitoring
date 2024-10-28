@@ -7,6 +7,7 @@
 const String apiKey = CHANNEL_WRITE_API_KEY;
 const String thingSpeakServer = "http://api.thingspeak.com/update";
 const String emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
+const String dataServerUrl = "https://example.com/data"; // Replace with your actual data server URL
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
@@ -15,6 +16,11 @@ DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT 
 
 #define THRESHOLD_TEMP 29
 #define RELAY_DURATION_IN_SEC 1
+
+struct Data {
+  float temperature;
+  float humid;
+}
 
 void setup() {
   Serial.begin(115200); // * Initialize Serial with 115200 bit/s
@@ -29,6 +35,67 @@ void setup() {
   
   pinMode(Relay, OUTPUT); // * Configuring Relay as output of ESP8266 board
   dht.begin();
+}
+
+void getDataFromServer() {
+  WiFiClientSecure httpsClient;
+  httpsClient.setInsecure();
+  HTTPClient httpClient;
+  
+  httpClient.begin(httpsClient, dataServerUrl);
+  int httpCode = httpClient.GET();
+
+  if (httpCode > 0) {
+    String payload = httpClient.getString();
+    Serial.println("Data received from server:");
+    Serial.println(payload);
+  } else {
+    Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
+  }
+  
+  httpClient.end();
+}
+
+void sendDataToThingSpeakServer(float temperature, float humid) {
+  WiFiClient wifiClient;
+  HTTPClient http;
+
+  const String thingSpeakHttpPostRequest = thingSpeakServer + "?api_key=" + apiKey + "&field1=" + String(temperature) + "&field2=" + String(humid);
+  http.begin(wifiClient, thingSpeakHttpPostRequest);
+
+  int thingSpeakHttpCode = http.POST("");
+  if (thingSpeakHttpCode > 0) {
+    String payload = http.getString();
+    Serial.println("ThingSpeak Server request sent successfully.");
+    Serial.println("Server response code: " + String(thingSpeakHttpCode));
+  } else {
+    Serial.println("Failed to send HTTP POST request. Error: " + String(http.errorToString(thingSpeakHttpCode).c_str()));
+  }
+
+  http.end();
+}
+
+void requestToSendEmail(float temperature, float humid) {
+  WiFiClientSecure httpsClient;
+  httpsClient.setInsecure();
+  HTTPClient httpClientForSendingEmail;
+
+  const String emailSubject = "Humid+and+Temperature+Alert";
+  const String emailContent = "Temperature+=+" + String(temperature) + "+|+Humid+=+" + String(humid);
+  String mailingHttpsServerGetRequest = String(emailServer) + "?to=" + NOTIFICATION_RECEIVER + "&subject=" + emailSubject + "&content=" + emailContent;
+
+  httpClientForSendingEmail.begin(httpsClient, mailingHttpsServerGetRequest);
+  int mailingServiceHttpsCode = httpClientForSendingEmail.GET();
+  if (mailingServiceHttpsCode > 0) {
+    String getPayload = httpClientForSendingEmail.getString();
+    Serial.println("Mailing Server request sent successfully.");
+    Serial.println("Server response code: " + String(mailingServiceHttpsCode));
+    Serial.println("Response payload: " + getPayload);
+  } else {
+    Serial.println("Failed to send HTTPS GET request. Error: " + String(httpClientForSendingEmail.errorToString(mailingServiceHttpsCode).c_str()));
+  }
+
+  httpClientForSendingEmail.end();
 }
 
 void loop() {
@@ -64,39 +131,11 @@ void loop() {
     digitalWrite(Relay, HIGH);
   }
 
-  // * Sending HTTP POST Request to Thing Speak server to send data of humid and temperature.
-  WiFiClient wifiClient;
-  HTTPClient http;
-  const String thingSpeakHttpPostRequest = thingSpeakServer + "?api_key=" + apiKey + "&field1=" + String(t) + "&field2=" + String(h);
-  http.begin(wifiClient, thingSpeakHttpPostRequest);
-  int thingSpeakHttpCode = http.POST("");
-  if (thingSpeakHttpCode > 0) {
-    String payload = http.getString();
-    Serial.println("ThingSpeak Server request sent successfully.");
-    Serial.println("Server response code: " + String(thingSpeakHttpCode));
-  } else {
-    Serial.println("Failed to send HTTP POST request. Error: " + String(http.errorToString(thingSpeakHttpCode).c_str()));
-  }
-  http.end();
+  sendDataToThingSpeakServer(t, h);
 
-  // * Sending HTTPS GET Request to Mailing server to request a mailing to receiver.
-  WiFiClientSecure httpsClient;
-  httpsClient.setInsecure();
-  HTTPClient httpClientForSendingEmail;
-  const String emailSubject = "Humid+and+Temperature+Alert";
-  const String emailContent = "Temperature+=+" + String(t) + "+|+Humid+=+" + String(h);
-  String mailingHttpsServerGetRequest = String(emailServer) + "?to=" + NOTIFICATION_RECEIVER + "&subject=" + emailSubject + "&content=" + emailContent;
-  httpClientForSendingEmail.begin(httpsClient, mailingHttpsServerGetRequest);
-  int mailingServiceHttpsCode = httpClientForSendingEmail.GET();
-  if (mailingServiceHttpsCode > 0) {
-    String getPayload = httpClientForSendingEmail.getString();
-    Serial.println("Mailing Server request sent successfully.");
-    Serial.println("Server response code: " + String(mailingServiceHttpsCode));
-    Serial.println("Response payload: " + getPayload);
-  } else {
-    Serial.println("Failed to send HTTPS GET request. Error: " + String(httpClientForSendingEmail.errorToString(mailingServiceHttpsCode).c_str()));
-  }
-  httpClientForSendingEmail.end();
+  requestToSendEmail(t, h);
+
+  getDataFromServer();
 
   Serial.println("Waiting 8 seconds to send next request ...");
   delay(8000);

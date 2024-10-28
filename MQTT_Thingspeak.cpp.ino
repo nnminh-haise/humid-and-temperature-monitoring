@@ -15,6 +15,8 @@ const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/271183
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
 #define Relay D0          // * Relay control pin
+#define DEFAULT_TEMP_THRESHOLD 30
+#define DEFAULT_HUMID_THRESHOLD 60
 DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT sensor type
 
 #define THRESHOLD_TEMP 29
@@ -24,6 +26,8 @@ struct Data {
   float temperature;
   float humid;
 };
+
+Data thresholdData = {DEFAULT_TEMP_THRESHOLD, DEFAULT_HUMID_THRESHOLD};
 
 void setup() {
   Serial.begin(115200);
@@ -73,14 +77,18 @@ void getDataFromServer() {
 
   if (tempThreshold != -1) {
     Serial.println("Temperature Threshold (field3): " + tempThreshold);
+    thresholdData.temperature = tempThreshold;
   } else {
     Serial.println("Temperature threshold data (field3) is null.");
+    thresholdData.temperature = DEFAULT_TEMP_THRESHOLD;
   }
 
   if (humidThreshold != -1) {
     Serial.println("Humidity Threshold (field4): " + humidThreshold);
+    thresholdData.humid = humidThreshold;
   } else {
     Serial.println("Humidity threshold data (field4) is null.");
+    thresholdData.humid = DEFAULT_HUMID_THRESHOLD;
   }
   
   httpClient.end();
@@ -90,7 +98,7 @@ void sendDataToThingSpeakServer(float temperature, float humid) {
   WiFiClient wifiClient;
   HTTPClient http;
 
-  const String thingSpeakHttpPostRequest = thingSpeakServer + "?api_key=" + apiKey + "&field1=" + String(temperature) + "&field2=" + String(humid);
+  const String thingSpeakHttpPostRequest = thingSpeakServer + "?api_key=" + apiKey + "&field1=" + String(temperature) + "&field2=" + String(humid) + "&field3=" + String(thresholdData.temperature) + "&field4=" + String(thresholdData.humid);
   http.begin(wifiClient, thingSpeakHttpPostRequest);
 
   int thingSpeakHttpCode = http.POST("");

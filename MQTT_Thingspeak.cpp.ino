@@ -72,11 +72,11 @@ void getDataFromServer() {
 
   float tempThreshold = doc["feeds"][0]["field3"].isNull() ? -1 : doc["feeds"][0]["field3"].as<float>();
   float humidThreshold = doc["feeds"][0]["field4"].isNull() ? -1 : doc["feeds"][0]["field4"].as<float>();
-  Serial.println("temp threshold:" + tempThreshold);
-  Serial.println("humid threshold:" + humidThreshold);
+  Serial.println("temp threshold:" + String(tempThreshold));
+  Serial.println("humid threshold:" + String(humidThreshold));
 
   if (tempThreshold != -1) {
-    Serial.println("Temperature Threshold (field3): " + tempThreshold);
+    Serial.println("Temperature Threshold (field3): " + String(tempThreshold));
     thresholdData.temperature = tempThreshold;
   } else {
     Serial.println("Temperature threshold data (field3) is null.");
@@ -84,7 +84,7 @@ void getDataFromServer() {
   }
 
   if (humidThreshold != -1) {
-    Serial.println("Humidity Threshold (field4): " + humidThreshold);
+    Serial.println("Humidity Threshold (field4): " + String(humidThreshold));
     thresholdData.humid = humidThreshold;
   } else {
     Serial.println("Humidity threshold data (field4) is null.");

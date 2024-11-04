@@ -7,7 +7,7 @@
 
 const String apiKey = CHANNEL_WRITE_API_KEY;
 const String thingSpeakServer = "http://api.thingspeak.com/update";
-const String emailServer = "https://careful-niki-cau-ban-ten-minh-a46ce20a.koyeb.app/api/v1/emails/notify";
+const String emailServer = "https://helpless-anette-nnminh-haise-7aa662f8.koyeb.app/api/v1/emails/notify";
 const String thingSpeakServerReadTemperatureThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/3.json?api_key=O0QM4ZXS290A7SUM&results=1";
 const String thingSpeakServerReadHumidThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/4.json?api_key=O0QM4ZXS290A7SUM&results=1";
 const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/2711831/feeds.json?api_key=O0QM4ZXS290A7SUM&results=1";
@@ -19,8 +19,7 @@ const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/271183
 #define DEFAULT_HUMID_THRESHOLD 60
 DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT sensor type
 
-#define THRESHOLD_TEMP 29
-#define RELAY_DURATION_IN_SEC 1
+#define RELAY_DURATION_IN_SEC 3
 
 struct Data {
   float temperature;

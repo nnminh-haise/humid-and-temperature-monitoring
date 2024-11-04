@@ -14,7 +14,7 @@ const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/271183
 
 #define DHTPIN D2         // * DHT11 Data pin
 #define DHTTYPE DHT11     // * Sensor type
-#define Relay D0          // * Relay control pin
+#define Relay D7          // * Relay control pin
 #define DEFAULT_TEMP_THRESHOLD 30
 #define DEFAULT_HUMID_THRESHOLD 60
 DHT dht(DHTPIN, DHTTYPE); // * Initialize a DHT object with D2 data pin and DHT sensor type
@@ -159,22 +159,22 @@ void loop() {
     return;
   }
 
-  if (t >= THRESHOLD_TEMP) {
+  getDataFromServer();
+
+  sendDataToThingSpeakServer(t, h);
+
+  if (t >= thresholdData.temperature) {
     Serial.println("Turning on Relay");
     digitalWrite(Relay, LOW);
     delay(RELAY_DURATION_IN_SEC * 1000);
     digitalWrite(Relay, HIGH);
     Serial.println("Turned off Relay");
+
+    requestToSendEmail(t, h);
+
+    Serial.println("Waiting 2 seconds to send next request ...");
+    delay(2000);
   } else {
     digitalWrite(Relay, HIGH);
   }
-
-  sendDataToThingSpeakServer(t, h);
-
-  requestToSendEmail(t, h);
-
-  getDataFromServer();
-
-  Serial.println("Waiting 8 seconds to send next request ...");
-  delay(8000);
 }

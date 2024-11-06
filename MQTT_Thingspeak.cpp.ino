@@ -118,7 +118,7 @@ void requestToSendEmail(float temperature, float humid) {
   HTTPClient httpClientForSendingEmail;
 
   const String emailSubject = "Humid+and+Temperature+Alert";
-  const String emailContent = "Temperature+=+" + String(temperature) + "+|+Humid+=+" + String(humid);
+  const String emailContent = "Temperature+=+" + String(temperature) + "+ Celsious |+Humid+=+" + String(humid) + "%";
   String mailingHttpsServerGetRequest = String(emailServer) + "?to=" + NOTIFICATION_RECEIVER + "&subject=" + emailSubject + "&content=" + emailContent;
 
   httpClientForSendingEmail.begin(httpsClient, mailingHttpsServerGetRequest);

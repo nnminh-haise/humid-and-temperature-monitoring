@@ -47,55 +47,112 @@ void setup() {
   dht.begin();
 }
 
+// void getDataFromServer() {
+//   WiFiClientSecure httpsClient;
+//   httpsClient.setInsecure();
+//   HTTPClient httpClient;
+  
+//   const String localServerThresholdUrl = localServer + "/api/v1/feeds/thresholds?channel-id=" + localChannelId + "&read-key=" + localServerReadKey;
+//   httpClient.begin(httpsClient, localServerThresholdUrl);
+//   int httpCode = httpClient.GET();
+
+//   if (httpCode <= 0) {
+//     Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
+//     httpClient.end();
+//   }
+
+//   String payload = httpClient.getString();
+//   Serial.println("Data received from server:");
+//   Serial.println(payload);
+
+//   const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(1) + 340;
+//   DynamicJsonDocument doc(capacity);
+//   DeserializationError error = deserializeJson(doc, payload);
+
+//   if (error) {
+//     Serial.print("Failed to parse JSON: ");
+//     Serial.println(error.c_str());
+//     return;
+//   }
+
+//   float tempThreshold = doc["data"]["temperatureThreshold"].isNull() ? -1 : doc["data"]["temperatureThreshold"].as<float>();
+//   float humidThreshold = doc["data"]["humidityThreshold"].isNull() ? -1 : doc["data"]["humidityThreshold"].as<float>();
+//   Serial.println("temp threshold:" + String(tempThreshold));
+//   Serial.println("humid threshold:" + String(humidThreshold));
+
+//   if (tempThreshold != -1) {
+//     Serial.println("Temperature Threshold (field3): " + String(tempThreshold));
+//     thresholdData.temperature = tempThreshold;
+//   } else {
+//     Serial.println("Temperature threshold data (field3) is null.");
+//     thresholdData.temperature = DEFAULT_TEMP_THRESHOLD;
+//   }
+
+//   if (humidThreshold != -1) {
+//     Serial.println("Humidity Threshold (field4): " + String(humidThreshold));
+//     thresholdData.humid = humidThreshold;
+//   } else {
+//     Serial.println("Humidity threshold data (field4) is null.");
+//     thresholdData.humid = DEFAULT_HUMID_THRESHOLD;
+//   }
+  
+//   httpClient.end();
+// }
+
 void getDataFromServer() {
   WiFiClientSecure httpsClient;
   httpsClient.setInsecure();
   HTTPClient httpClient;
-  
+
   const String localServerThresholdUrl = localServer + "/api/v1/feeds/thresholds?channel-id=" + localChannelId + "&read-key=" + localServerReadKey;
   httpClient.begin(httpsClient, localServerThresholdUrl);
   int httpCode = httpClient.GET();
 
-  if (httpCode <= 0) {
+  if (httpCode > 0) {
+    if (httpCode == HTTP_CODE_OK) {
+      String payload = httpClient.getString();
+      Serial.println("Data received from server:");
+      Serial.println(payload);
+
+      const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(1) + 200; // Adjusted memory allocation
+      DynamicJsonDocument doc(capacity);
+      DeserializationError error = deserializeJson(doc, payload);
+
+      if (error) {
+        Serial.print("Failed to parse JSON: ");
+        Serial.println(error.c_str());
+        httpClient.end();
+        return;
+      }
+
+      // Extract threshold values
+      JsonObject data = doc["data"];
+      float tempThreshold = data["temperatureThreshold"].is<float>() ? data["temperatureThreshold"].as<float>() : -1;
+      float humidThreshold = data["humidityThreshold"].is<float>() ? data["humidityThreshold"].as<float>() : -1;
+
+      // Log and assign values, falling back to defaults if needed
+      if (tempThreshold != -1) {
+        Serial.println("Temperature Threshold: " + String(tempThreshold));
+        thresholdData.temperature = tempThreshold;
+      } else {
+        Serial.println("Temperature threshold data is null. Using default.");
+        thresholdData.temperature = DEFAULT_TEMP_THRESHOLD;
+      }
+
+      if (humidThreshold != -1) {
+        Serial.println("Humidity Threshold: " + String(humidThreshold));
+        thresholdData.humid = humidThreshold;
+      } else {
+        Serial.println("Humidity threshold data is null. Using default.");
+        thresholdData.humid = DEFAULT_HUMID_THRESHOLD;
+      }
+    } else {
+      Serial.println("Error in response. HTTP code: " + String(httpCode));
+    }
+  } else {
     Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
-    httpClient.end();
   }
 
-  String payload = httpClient.getString();
-  Serial.println("Data received from server:");
-  Serial.println(payload);
-
-  const size_t capacity = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(6) + JSON_ARRAY_SIZE(1) + 340;
-  DynamicJsonDocument doc(capacity);
-  DeserializationError error = deserializeJson(doc, payload);
-
-  if (error) {
-    Serial.print("Failed to parse JSON: ");
-    Serial.println(error.c_str());
-    return;
-  }
-
-  float tempThreshold = doc["data"]["temperatureThreshold"].isNull() ? -1 : doc["data"]["temperatureThreshold"].as<float>();
-  float humidThreshold = doc["data"]["humidityThreshold"].isNull() ? -1 : doc["data"]["humidityThreshold"].as<float>();
-  Serial.println("temp threshold:" + String(tempThreshold));
-  Serial.println("humid threshold:" + String(humidThreshold));
-
-  if (tempThreshold != -1) {
-    Serial.println("Temperature Threshold (field3): " + String(tempThreshold));
-    thresholdData.temperature = tempThreshold;
-  } else {
-    Serial.println("Temperature threshold data (field3) is null.");
-    thresholdData.temperature = DEFAULT_TEMP_THRESHOLD;
-  }
-
-  if (humidThreshold != -1) {
-    Serial.println("Humidity Threshold (field4): " + String(humidThreshold));
-    thresholdData.humid = humidThreshold;
-  } else {
-    Serial.println("Humidity threshold data (field4) is null.");
-    thresholdData.humid = DEFAULT_HUMID_THRESHOLD;
-  }
-  
   httpClient.end();
 }
 

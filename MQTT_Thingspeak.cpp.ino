@@ -100,17 +100,19 @@ void setup() {
 // }
 
 void getDataFromServer() {
-  WiFiClientSecure httpsClient;
-  httpsClient.setInsecure();
-  HTTPClient httpClient;
+  WiFiClient httpClient; // Use WiFiClient for HTTP connections
+  HTTPClient http;
 
+  // Construct the URL for the local server
   const String localServerThresholdUrl = localServer + "/api/v1/feeds/thresholds?channel-id=" + localChannelId + "&read-key=" + localServerReadKey;
-  httpClient.begin(httpsClient, localServerThresholdUrl);
-  int httpCode = httpClient.GET();
+  
+  // Begin the HTTP connection
+  http.begin(httpClient, localServerThresholdUrl);
+  int httpCode = http.GET(); // Send the GET request
 
-  if (httpCode > 0) {
+  if (httpCode > 0) { // Check if the request was successful
     if (httpCode == HTTP_CODE_OK) {
-      String payload = httpClient.getString();
+      String payload = http.getString();
       Serial.println("Data received from server:");
       Serial.println(payload);
 
@@ -121,7 +123,7 @@ void getDataFromServer() {
       if (error) {
         Serial.print("Failed to parse JSON: ");
         Serial.println(error.c_str());
-        httpClient.end();
+        http.end();
         return;
       }
 
@@ -150,10 +152,10 @@ void getDataFromServer() {
       Serial.println("Error in response. HTTP code: " + String(httpCode));
     }
   } else {
-    Serial.println("Failed to get data from server. Error: " + String(httpClient.errorToString(httpCode).c_str()));
+    Serial.println("Failed to get data from server. Error: " + String(http.errorToString(httpCode).c_str()));
   }
 
-  httpClient.end();
+  http.end(); // End the HTTP connection
 }
 
 void sendDataToThingSpeakServer(float temperature, float humid) {

@@ -11,9 +11,10 @@ const String emailServer = "https://helpless-anette-nnminh-haise-7aa662f8.koyeb.
 const String thingSpeakServerReadTemperatureThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/3.json?api_key=O0QM4ZXS290A7SUM&results=1";
 const String thingSpeakServerReadHumidThresholdUrl = "https://api.thingspeak.com/channels/2711831/fields/4.json?api_key=O0QM4ZXS290A7SUM&results=1";
 const String thingSpeakReadFeedUrl = "https://api.thingspeak.com/channels/2711831/feeds.json?api_key=O0QM4ZXS290A7SUM&results=1";
-const String localServer = "http://188.166.189.230";
+const String localServer = "http://159.223.76.203";
 const String localChannelId = "672adc592317e2b5f060181c";
 const String localServerWriteKey = "e3699a5657b5d2e25525259b32c2e5225af3cdd177e7e702fd9a56cb7d8911f1";
+const String localServerReadKey = "8a197a16080c1b20d5a9e395eb42317f64e2b593c7175ffa1dde23c0bfcdbc9f";
 
 
 #define DHTPIN D2         // * DHT11 Data pin
@@ -51,7 +52,8 @@ void getDataFromServer() {
   httpsClient.setInsecure();
   HTTPClient httpClient;
   
-  httpClient.begin(httpsClient, thingSpeakReadFeedUrl);
+  const String localServerThresholdUrl = localServer + "/api/v1/feeds/thresholds?channel-id=" + localChannelId + "&read-key=" + localServerReadKey;
+  httpClient.begin(httpsClient, localServerThresholdUrl);
   int httpCode = httpClient.GET();
 
   if (httpCode <= 0) {
@@ -73,8 +75,8 @@ void getDataFromServer() {
     return;
   }
 
-  float tempThreshold = doc["feeds"][0]["field3"].isNull() ? -1 : doc["feeds"][0]["field3"].as<float>();
-  float humidThreshold = doc["feeds"][0]["field4"].isNull() ? -1 : doc["feeds"][0]["field4"].as<float>();
+  float tempThreshold = doc["data"]["temperatureThreshold"].isNull() ? -1 : doc["data"]["temperatureThreshold"].as<float>();
+  float humidThreshold = doc["data"]["humidityThreshold"].isNull() ? -1 : doc["data"]["humidityThreshold"].as<float>();
   Serial.println("temp threshold:" + String(tempThreshold));
   Serial.println("humid threshold:" + String(humidThreshold));
 
@@ -118,7 +120,7 @@ void sendDataToThingSpeakServer(float temperature, float humid) {
   const String localServerGetRequest = localServer + "/api/v1/feeds/create?channel-id=" + localChannelId + "&write-key=" + localServerWriteKey + "&temperature=" + String(temperature) + "&humidity=" + String(humid) + "&temperature-threshold=" + String(thresholdData.temperature) + "&humidity-threshold=" + String(thresholdData.humid);
   http.begin(wifiClient, localServerGetRequest);
 
-  int localServerHttpGet = http.GET("");
+  int localServerHttpGet = http.GET();
   if (localServerHttpGet > 0) {
     String payload = http.getString();
     Serial.println("Local Server request sent successfully.");
